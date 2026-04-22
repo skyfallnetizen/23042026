@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Birthday Card</title>
+  <style>
+    :root {
+      --bg1: #0b0314;
+      --bg2: #1b0830;
+      --bg3: #311054;
+      --neon: #d86bff;
+      --pink: #ff8ae8;
+      --text: #f7e5ff;
+      --soft: rgba(216, 107, 255, 0.18);
+      --yes-w: 128px;
+      --yes-h: 50px;
+      --no-w: 128px;
+      --no-h: 50px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
+      background: radial-gradient(circle at top, var(--bg3) 0%, var(--bg2) 42%, var(--bg1) 100%);
+      color: var(--text);
+    }
+
+    body {
+      position: relative;
+      display: grid;
+      place-items: center;
+    }
+
+    .ambient,
+    .grain {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .ambient {
+      background:
+        radial-gradient(circle at 18% 30%, rgba(216, 107, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 80% 70%, rgba(255, 138, 232, 0.14), transparent 24%),
+        radial-gradient(circle at 50% 50%, rgba(216, 107, 255, 0.08), transparent 36%);
+    }
+
+    .grain {
+      opacity: 0.03;
+      background-image:
+        radial-gradient(circle at 20% 30%, #fff 0.7px, transparent 0.7px),
+        radial-gradient(circle at 70% 60%, #fff 0.7px, transparent 0.7px),
+        radial-gradient(circle at 45% 82%, #fff 0.7px, transparent 0.7px);
+      background-size: 140px 140px, 180px 180px, 220px 220px;
+    }
+
+    .scene {
+      position: relative;
+      width: min(92vw, 520px);
+      height: min(78vh, 720px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      perspective: 1400px;
+      z-index: 1;
+    }
+
+    .envelope-stage,
+    .question-stage,
+    .yes-stage {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+
+    .question-stage,
+    .yes-stage {
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.94);
+    }
+
+    .question-stage.show,
+    .yes-stage.show {
+      opacity: 1;
+      pointer-events: auto;
+      transform: scale(1);
+    }
+
+    .envelope-wrap {
+      position: relative;
+      width: min(78vw, 340px);
+      aspect-ratio: 1.24 / 0.82;
+      transform-style: preserve-3d;
+      animation: envelopeEnter 1.4s cubic-bezier(.2, .9, .18, 1) forwards;
+      filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.45));
+      cursor: pointer;
+    }
+
+    .envelope-glow {
+      position: absolute;
+      inset: -18%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(216, 107, 255, 0.22), transparent 62%);
+      filter: blur(16px);
+      z-index: -1;
+    }
+
+    .envelope-back,
+    .envelope-front,
+    .envelope-flap,
+    .letter {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      border-radius: 18px;
+    }
+
+    .envelope-back {
+      bottom: 0;
+      height: 68%;
+      background: linear-gradient(180deg, #42136b, #230736);
+      border: 1px solid rgba(216, 107, 255, 0.25);
+    }
+
+    .letter {
+      left: 10%;
+      width: 80%;
+      height: 64%;
+      bottom: 22%;
+      background: linear-gradient(180deg, #fffaff, #f8e7ff);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+      transition: transform 1s cubic-bezier(.2, .8, .2, 1), opacity 0.6s ease;
+    }
+
+    .letter::before {
+      content: '';
+      position: absolute;
+      inset: 18px;
+      background: repeating-linear-gradient(to bottom, rgba(216, 107, 255, 0.22) 0 2px, transparent 2px 14px);
+    }
+
+    .envelope-front {
+      bottom: 0;
+      height: 72%;
+      background: linear-gradient(180deg, #571a8b, #2b0a45);
+      border: 1px solid rgba(216, 107, 255, 0.34);
+      clip-path: polygon(0 0, 50% 54%, 100% 0, 100% 100%, 0 100%);
+      z-index: 3;
+    }
+
+    .envelope-flap {
+      top: 6%;
+      height: 54%;
+      background: linear-gradient(180deg, #7427b0, #431267);
+      clip-path: polygon(0 0, 100% 0, 50% 100%);
+      transform-origin: top center;
+      z-index: 4;
+      transition: transform 1s cubic-bezier(.2, .8, .2, 1);
+    }
+
+    .seal {
+      position: absolute;
+      left: 50%;
+      bottom: 18%;
+      transform: translateX(-50%);
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #ff92f0, #d86bff 55%, #7e30bf 100%);
+      display: grid;
+      place-items: center;
+      color: white;
+      font-size: 24px;
+      box-shadow: 0 0 18px rgba(216, 107, 255, 0.24);
+      z-index: 5;
+      transition: opacity 0.5s ease;
+    }
+
+    .tap-text {
+      margin-top: 24px;
+      font-size: clamp(14px, 3.5vw, 18px);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--neon);
+      text-shadow: 0 0 14px rgba(216, 107, 255, 0.25);
+      animation: glowPulse 1.8s ease-in-out infinite;
+    }
+
+    .open .envelope-flap {
+      transform: rotateX(180deg);
+    }
+
+    .open .letter {
+      transform: translateY(-84px);
+    }
+
+    .open .seal {
+      opacity: 0;
+    }
+
+    .question-card,
+    .yes-card {
+      width: min(92vw, 460px);
+      border-radius: 28px;
+      padding: 28px 22px 34px;
+      background: linear-gradient(180deg, rgba(31, 10, 54, 0.9), rgba(14, 5, 26, 0.92));
+      border: 1px solid rgba(216, 107, 255, 0.28);
+      box-shadow: 0 20px 70px rgba(0, 0, 0, 0.42);
+      backdrop-filter: blur(14px);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .question-card::before,
+    .yes-card::before {
+      content: '';
+      position: absolute;
+      inset: -20% auto auto -20%;
+      width: 60%;
+      height: 60%;
+      background: radial-gradient(circle, rgba(216, 107, 255, 0.16), transparent 70%);
+      pointer-events: none;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(30px, 7vw, 52px);
+      color: var(--neon);
+      letter-spacing: 0.06em;
+      text-shadow: 0 0 18px rgba(216, 107, 255, 0.25);
+    }
+
+    .sub {
+      margin: 0 0 26px;
+      font-size: clamp(14px, 3.8vw, 18px);
+      color: rgba(247, 229, 255, 0.88);
+      line-height: 1.6;
+    }
+
+    .buttons-wrap {
+      position: relative;
+      width: 100%;
+      min-height: 170px;
+      margin-top: 4px;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 999px;
+      width: var(--yes-w);
+      min-height: var(--yes-h);
+      padding: 12px 22px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      transition: left 0.9s cubic-bezier(.22, .9, .2, 1), top 0.9s cubic-bezier(.22, .9, .2, 1), transform 0.9s cubic-bezier(.22, .9, .2, 1), box-shadow 0.35s ease, background 0.35s ease, opacity 0.28s ease;
+      position: absolute;
+      overflow: hidden;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px) scale(1.03);
+    }
+
+    .btn-yes {
+      left: 12%;
+      top: 80px;
+      background: linear-gradient(180deg, #ff9af0, #d86bff);
+      color: #2a0839;
+      box-shadow: 0 10px 26px rgba(216, 107, 255, 0.28);
+      z-index: 2;
+    }
+
+    .btn-yes.highlight {
+      animation: yesLovePulse 1.2s ease-in-out infinite;
+      box-shadow: 0 0 0 0 rgba(255, 154, 240, 0.36), 0 0 26px rgba(216, 107, 255, 0.4);
+    }
+
+    .btn-yes.centered {
+      left: 50% !important;
+      top: 80px;
+      transform: translateX(-50%) scale(1.22);
+    }
+
+    .btn-yes.centered:hover {
+      transform: translateX(-50%) scale(1.26) translateY(-2px);
+    }
+
+    .yes-love-ring,
+    .yes-love-ring::before,
+    .yes-love-ring::after {
+      position: absolute;
+      right: -8px;
+      top: -5px;
+      transform: rotate(45deg);
+    }
+
+    .yes-love-ring {
+      left: 50%;
+      top: 50%;
+      width: 28px;
+      height: 28px;
+      transform: translate(-50%, -50%) rotate(-45deg);
+      opacity: 0;
+      z-index: 1;
+    }
+
+    .btn-yes.highlight .yes-love-ring {
+      animation: loveBurst 1.35s ease-out infinite;
+    }
+
+    .yes-love-ring::before,
+    .yes-love-ring::after {
+      content: '';
+      width: 32px;
+      height: 52px;
+      background: radial-gradient(circle at 50% 30%, rgba(255, 154, 240, 0.34), rgba(216, 107, 255, 0.12) 58%, transparent 72%);
+      border-radius: 32px 32px 0 0;
+      transform-origin: bottom center;
+      filter: blur(1px);
+    }
+
+    .yes-love-ring::before {
+      left: -8px;
+      top: -5px;
+      transform: rotate(-45deg);
+    }
+
+    .yes-love-ring::after {
+      right: -10px;
+      transform: rotate(45deg);
+    }
+
+    .btn-no {
+      left: 62%;
+      top: 80px;
+      width: var(--no-w);
+      min-height: var(--no-h);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      border: 1px solid rgba(216, 107, 255, 0.28);
+      box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
+      z-index: 3;
+    }
+
+    .btn-no.gone {
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.2);
+    }
+
+    .hint {
+      margin-top: 72px;
+      font-size: 13px;
+      color: rgba(247, 229, 255, 0.58);
+      letter-spacing: 0.06em;
+    }
+
+    .smoke-burst {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, rgba(216, 107, 255, 0.55) 45%, rgba(216, 107, 255, 0.08) 75%, transparent 100%);
+      filter: blur(2px);
+      pointer-events: none;
+      animation: smokeFloat 850ms ease-out forwards;
+      z-index: 10;
+    }
+
+    .hearts {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .heart {
+      position: absolute;
+      bottom: -30px;
+      color: var(--pink);
+      opacity: 0;
+      animation: floatUp linear forwards;
+      text-shadow: 0 0 16px rgba(255, 138, 232, 0.28);
+    }
+
+    .yes-stage h2 {
+      margin: 0 0 10px;
+      font-size: clamp(32px, 8vw, 58px);
+      color: var(--pink);
+      text-shadow: 0 0 18px rgba(255, 138, 232, 0.26);
+      position: relative;
+      z-index: 2;
+    }
+
+    .yes-stage p {
+      margin: 0;
+      font-size: clamp(15px, 4vw, 19px);
+      line-height: 1.6;
+      color: rgba(247, 229, 255, 0.92);
+      position: relative;
+      z-index: 2;
+    }
+
+    .yes-balloons {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .yes-balloon {
+      position: absolute;
+      bottom: -140px;
+      width: 52px;
+      height: 68px;
+      border-radius: 50% 50% 46% 46%;
+      opacity: 0;
+      box-shadow:
+        0 10px 22px rgba(216, 107, 255, 0.18),
+        0 0 20px rgba(255, 138, 232, 0.12);
+      background:
+        radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.18) 16%, transparent 17%),
+        linear-gradient(180deg, #ff9af0 0%, #d86bff 55%, #7e30bf 100%);
+      animation-name: yesBalloonFloat;
+      animation-timing-function: linear;
+      animation-fill-mode: forwards;
+    }
+
+    .yes-balloon::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 98%;
+      width: 1.5px;
+      height: 96px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(216, 107, 255, 0.02));
+      transform: translateX(-50%);
+      opacity: 0.9;
+    }
+
+    .yes-balloon.b2 {
+      background:
+        radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.16) 16%, transparent 17%),
+        linear-gradient(180deg, #f7a8ff 0%, #c96dff 55%, #6d2ca8 100%);
+    }
+
+    .yes-balloon.b3 {
+      background:
+        radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.15) 16%, transparent 17%),
+        linear-gradient(180deg, #ff8ae8 0%, #b24bf6 58%, #5f1f98 100%);
+    }
+
+    .status {
+      margin-top: 6px;
+      font-size: 13px;
+      color: rgba(247, 229, 255, 0.62);
+      min-height: 18px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .sigma-gif-wrap {
+      position: absolute;
+      left: 50%;
+      top: 146px;
+      transform: translateX(-50%) scale(0.86);
+      width: min(54vw, 170px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.8s ease, transform 0.8s ease;
+      z-index: 1;
+    }
+
+    .sigma-gif-wrap.show {
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+    }
+
+    .sigma-gif {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 12px 26px rgba(0, 0, 0, 0.24), 0 0 26px rgba(216, 107, 255, 0.16);
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .sigma-label {
+      margin-top: 10px;
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(247, 229, 255, 0.72);
+      text-shadow: 0 0 12px rgba(216, 107, 255, 0.18);
+    }
+
+    @keyframes envelopeEnter {
+      from {
+        opacity: 0;
+        transform: translateY(40px) scale(0.78) rotateX(18deg);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1) rotateX(0deg);
+      }
+    }
+
+    @keyframes glowPulse {
+      0%, 100% {
+        opacity: 0.75;
+      }
+
+      50% {
+        opacity: 1;
+      }
+    }
+
+    @keyframes floatUp {
+      0% {
+        transform: translateY(0) scale(0.8);
+        opacity: 0;
+      }
+
+      15% {
+        opacity: 1;
+      }
+
+      100% {
+        transform: translateY(-360px) scale(1.3);
+        opacity: 0;
+      }
+    }
+
+    @keyframes smokeFloat {
+      0% {
+        transform: translate(0, 0) scale(0.5);
+        opacity: 0.95;
+      }
+
+      100% {
+        transform: translate(var(--dx), var(--dy)) scale(2.8);
+        opacity: 0;
+      }
+    }
+
+    @keyframes yesLovePulse {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(255, 154, 240, 0.28), 0 0 24px rgba(216, 107, 255, 0.36);
+      }
+
+      70% {
+        box-shadow: 0 0 0 18px rgba(255, 154, 240, 0), 0 0 36px rgba(216, 107, 255, 0.52);
+      }
+    }
+
+    @keyframes loveBurst {
+      0% {
+        opacity: 0.95;
+        transform: translate(-50%, -50%) rotate(-45deg) scale(0.45);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) rotate(-45deg) scale(4.4);
+      }
+    }
+
+    @keyframes yesBalloonFloat {
+      0% {
+        transform: translateY(0) translateX(0) scale(0.88) rotate(-3deg);
+        opacity: 0;
+      }
+
+      10% {
+        opacity: 1;
+      }
+
+      50% {
+        transform: translateY(-220px) translateX(14px) scale(0.96) rotate(2deg);
+        opacity: 1;
+      }
+
+      100% {
+        transform: translateY(-520px) translateX(-18px) scale(1.08) rotate(-4deg);
+        opacity: 0;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .scene {
+        width: 94vw;
+        height: 82vh;
+      }
+
+      .buttons-wrap {
+        min-height: 190px;
+      }
+
+      .btn-yes {
+        left: 8%;
+        top: 94px;
+      }
+
+      .btn-yes.centered {
+        top: 94px;
+      }
+
+      .btn-no {
+        left: 62%;
+        top: 94px;
+      }
+
+      .sigma-gif-wrap {
+        top: 156px;
+        width: min(56vw, 156px);
+      }
+
+      .hint {
+        margin-top: 86px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="ambient"></div>
+  <div class="grain"></div>
+
+  <main class="scene">
+    <section class="envelope-stage" id="envelopeStage">
+      <div class="envelope-wrap" id="envelopeWrap" role="button" tabindex="0" aria-label="Open the letter">
+        <div class="envelope-glow"></div>
+        <div class="envelope-back"></div>
+        <div class="letter"></div>
+        <div class="envelope-front"></div>
+        <div class="envelope-flap"></div>
+        <div class="seal">❤</div>
+      </div>
+      <div class="tap-text">Tap the envelope</div>
+    </section>
+
+    <section class="question-stage" id="questionStage">
+      <div class="question-card">
+        <h1>It's 23rd April, right?</h1>
+        <p class="sub">Choose carefully... one button is honest, the other one is a little shy.</p>
+
+        <div class="buttons-wrap" id="buttonsWrap">
+          <button class="btn btn-yes" id="yesBtn" type="button">
+            <span class="yes-love-ring"></span>
+            <span>Yes</span>
+          </button>
+          <button class="btn btn-no" id="noBtn" type="button">No</button>
+
+          <div class="sigma-gif-wrap" id="sigmaGifWrap">
+            <img class="sigma-gif" id="sigmaGif"
+              src="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExZXljcncxbWR5Y3M1bGU1ZHNuZ2o2ZnJidHJ3NHM2aGowbWxiOG1vMyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/dvdcBNbAiNVT9Z0iwP/giphy.gif"
+              alt="Sigma boy reaction gif" />
+            <div class="sigma-label">bayyyyy</div>
+          </div>
+        </div>
+
+        <div class="hint">Try pressing “No” 😏</div>
+        <div class="status" id="statusText"></div>
+      </div>
+    </section>
+
+    <section class="yes-stage" id="yesStage">
+      <div class="yes-card">
+        <div class="yes-balloons" id="yesBalloons"></div>
+        <div class="hearts" id="hearts"></div>
+        <h2>Happy Birthday! 💜</h2>
+        <p>I hope this year brings you new happiness, kind people, warm memories,
+          and all the little things that make life feel magical.</p>
+        <div class="status" id="savedText"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const envelopeWrap = document.getElementById('envelopeWrap');
+    const envelopeStage = document.getElementById('envelopeStage');
+    const questionStage = document.getElementById('questionStage');
+    const yesStage = document.getElementById('yesStage');
+    const noBtn = document.getElementById('noBtn');
+    const yesBtn = document.getElementById('yesBtn');
+    const buttonsWrap = document.getElementById('buttonsWrap');
+    const hearts = document.getElementById('hearts');
+    const statusText = document.getElementById('statusText');
+    const savedText = document.getElementById('savedText');
+    const sigmaGifWrap = document.getElementById('sigmaGifWrap');
+    const yesBalloons = document.getElementById('yesBalloons');
+
+    let noMoveCount = 0;
+    let noInterval = null;
+    let noVanished = false;
+    let sigmaGifTimer = null;
+    let isEnvelopeOpened = false;
+
+    function openEnvelope() {
+      if (isEnvelopeOpened) return;
+      isEnvelopeOpened = true;
+      envelopeWrap.classList.add('open');
+      setTimeout(() => {
+        envelopeStage.style.opacity = '0';
+        envelopeStage.style.pointerEvents = 'none';
+        questionStage.classList.add('show');
+        startNoRunaway();
+      }, 1100);
+    }
+
+    envelopeWrap.addEventListener('click', openEnvelope);
+    envelopeWrap.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openEnvelope();
+      }
+    });
+
+    function moveNoButton() {
+      if (noVanished) return;
+
+      const wrapRect = buttonsWrap.getBoundingClientRect();
+      const btnRect = noBtn.getBoundingClientRect();
+      const yesRect = yesBtn.getBoundingClientRect();
+
+      const maxX = wrapRect.width - btnRect.width;
+      const maxY = wrapRect.height - btnRect.height;
+
+      const padding = 8;
+      let x = 0;
+      let y = 0;
+      let tries = 0;
+
+      do {
+        x = Math.max(padding, Math.random() * Math.max(20, maxX - padding * 2));
+        y = Math.max(54, Math.random() * Math.max(60, maxY - 8));
+        tries += 1;
+
+        const noLeft = wrapRect.left + x;
+        const noTop = wrapRect.top + y;
+        const overlapX = Math.max(0, Math.min(noLeft + btnRect.width, yesRect.right) - Math.max(noLeft, yesRect.left));
+        const overlapY = Math.max(0, Math.min(noTop + btnRect.height, yesRect.bottom) - Math.max(noTop, yesRect.top));
+        const overlapsYes = overlapX > 0 && overlapY > 0;
+        if (!overlapsYes) break;
+      } while (tries < 30);
+
+      noBtn.style.left = `${x}px`;
+      noBtn.style.top = `${y}px`;
+      noMoveCount += 1;
+
+      if (noMoveCount > 2) {
+        noBtn.textContent = ['No', 'Still no?', 'Really?', 'Catch me 😝'][Math.min(noMoveCount - 1, 3)];
+      }
+    }
+
+    function startNoRunaway() {
+      if (noInterval || noVanished) return;
+      moveNoButton();
+      noInterval = setInterval(() => {
+        if (questionStage.classList.contains('show') && !noVanished) {
+          moveNoButton();
+        }
+      }, 900);
+    }
+
+    function stopNoRunaway() {
+      if (noInterval) {
+        clearInterval(noInterval);
+        noInterval = null;
+      }
+    }
+
+    function makeSmokeBurst() {
+      const btnRect = noBtn.getBoundingClientRect();
+      const wrapRect = buttonsWrap.getBoundingClientRect();
+      const cx = btnRect.left - wrapRect.left + btnRect.width / 2;
+      const cy = btnRect.top - wrapRect.top + btnRect.height / 2;
+
+      for (let i = 0; i < 18; i++) {
+        const puff = document.createElement('span');
+        puff.className = 'smoke-burst';
+        const angle = (Math.PI * 2 * i) / 18;
+        const distance = 24 + Math.random() * 34;
+        const dx = Math.cos(angle) * distance;
+        const dy = Math.sin(angle) * distance - 6;
+        puff.style.left = `${cx - 9}px`;
+        puff.style.top = `${cy - 9}px`;
+        puff.style.setProperty('--dx', `${dx}px`);
+        puff.style.setProperty('--dy', `${dy}px`);
+        buttonsWrap.appendChild(puff);
+        setTimeout(() => puff.remove(), 900);
+      }
+    }
+
+    function vanishNoButton() {
+      if (noVanished) return;
+      noVanished = true;
+      stopNoRunaway();
+      makeSmokeBurst();
+      noBtn.classList.add('gone');
+      statusText.textContent = 'Looks like only one answer remains 💜';
+
+      const targetLeft = Math.max(0, (buttonsWrap.clientWidth - yesBtn.offsetWidth) / 2);
+      yesBtn.style.left = `${targetLeft}px`;
+      yesBtn.style.top = '80px';
+
+      setTimeout(() => {
+        yesBtn.classList.add('centered', 'highlight');
+        sigmaGifWrap.classList.add('show');
+
+        if (sigmaGifTimer) clearTimeout(sigmaGifTimer);
+        sigmaGifTimer = setTimeout(() => {
+          sigmaGifWrap.classList.remove('show');
+        }, 5000);
+
+        yesBtn.focus();
+      }, 60);
+    }
+
+    noBtn.addEventListener('mouseenter', (e) => {
+      e.preventDefault();
+      if (!noVanished) moveNoButton();
+    });
+
+    noBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (!noVanished) moveNoButton();
+    }, { passive: false });
+
+    noBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (noVanished) return;
+
+      if (noMoveCount >= 4) {
+        vanishNoButton();
+      } else {
+        moveNoButton();
+      }
+    });
+
+    buttonsWrap.addEventListener('mousemove', (e) => {
+      if (!questionStage.classList.contains('show') || noVanished) return;
+      const rect = noBtn.getBoundingClientRect();
+      const dx = e.clientX - (rect.left + rect.width / 2);
+      const dy = e.clientY - (rect.top + rect.height / 2);
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance < 110) moveNoButton();
+    });
+
+    async function recordYesChoice() {
+      const payload = {
+        value: 'yes',
+        at: new Date().toISOString(),
+        page: location.href
+      };
+
+      localStorage.setItem('birthday-love-answer', JSON.stringify(payload));
+
+      try {
+        await fetch('/save-love-answer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        savedText.textContent = '🫶🫶🫶';
+      } catch {
+        savedText.textContent = '🫶🫶🫶';
+      }
+    }
+
+    yesBtn.addEventListener('click', async () => {
+      stopNoRunaway();
+      if (sigmaGifTimer) {
+        clearTimeout(sigmaGifTimer);
+        sigmaGifTimer = null;
+      }
+      sigmaGifWrap.classList.remove('show');
+      questionStage.classList.remove('show');
+      yesStage.classList.add('show');
+      launchHearts();
+      launchBalloons();
+      await recordYesChoice();
+    });
+
+    function launchHearts() {
+      hearts.innerHTML = '';
+      for (let i = 0; i < 22; i++) {
+        const heart = document.createElement('div');
+        heart.className = 'heart';
+        heart.textContent = ['❤', '💜', '✨'][Math.floor(Math.random() * 3)];
+        heart.style.left = `${Math.random() * 100}%`;
+        heart.style.fontSize = `${18 + Math.random() * 22}px`;
+        heart.style.animationDuration = `${2.8 + Math.random() * 2.2}s`;
+        heart.style.animationDelay = `${Math.random() * 0.9}s`;
+        hearts.appendChild(heart);
+      }
+    }
+
+    function launchBalloons() {
+      yesBalloons.innerHTML = '';
+
+      for (let i = 0; i < 14; i++) {
+        const balloon = document.createElement('div');
+        const variant = ['b1', 'b2', 'b3'][Math.floor(Math.random() * 3)];
+        balloon.className = `yes-balloon ${variant}`;
+        balloon.style.left = `${Math.random() * 92}%`;
+        balloon.style.animationDuration = `${5.5 + Math.random() * 3.2}s`;
+        balloon.style.animationDelay = `${Math.random() * 1.4}s`;
+        balloon.style.width = `${42 + Math.random() * 18}px`;
+        balloon.style.height = `${56 + Math.random() * 22}px`;
+        yesBalloons.appendChild(balloon);
+      }
+    }
+  </script>
+</body>
+
+</html>

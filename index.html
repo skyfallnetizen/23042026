@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Allabuu^infinity</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.21.1/dist/maplibre-gl.css" />
+
+  <style>
+    :root {
+      --bg-1: #05010a;
+      --bg-2: #10041b;
+      --bg-3: #1c0731;
+      --bg-4: #2d0d4a;
+      --neon: #d86bff;
+      --neon-2: #b86cff;
+      --neon-3: #ff9cf4;
+      --text: #f8eaff;
+      --text-soft: rgba(248, 234, 255, 0.74);
+      --line: rgba(216, 107, 255, 0.32);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #05010a;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      background:
+        radial-gradient(circle at center, #22083c 0%, #12041f 44%, #05010a 100%);
+    }
+
+    #app,
+    #map {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #map {
+      z-index: 1;
+      opacity: 0;
+      transition: opacity 1.2s ease;
+    }
+
+    #map.show {
+      opacity: 1;
+    }
+
+    .maplibregl-canvas {
+      filter: saturate(1.04) contrast(1.06) brightness(0.96) hue-rotate(7deg);
+    }
+
+    .maplibregl-ctrl-bottom-right,
+    .maplibregl-ctrl-bottom-left,
+    .maplibregl-ctrl-top-right,
+    .maplibregl-ctrl-top-left {
+      display: none !important;
+    }
+
+    .ambient,
+    .overlay,
+    .vignette,
+    .grain {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .ambient {
+      z-index: 2;
+      background:
+        radial-gradient(circle at 18% 28%, rgba(216, 107, 255, 0.12), transparent 24%),
+        radial-gradient(circle at 75% 70%, rgba(130, 92, 255, 0.10), transparent 24%),
+        radial-gradient(circle at 52% 46%, rgba(255, 156, 244, 0.05), transparent 28%);
+    }
+
+    .overlay {
+      z-index: 3;
+      background:
+        linear-gradient(rgba(11, 3, 20, 0.04), rgba(11, 3, 20, 0.14)),
+        radial-gradient(circle at center, rgba(176, 93, 255, 0.06), rgba(4, 0, 10, 0.14));
+      mix-blend-mode: screen;
+    }
+
+    .vignette {
+      z-index: 4;
+      box-shadow:
+        inset 0 0 180px rgba(0, 0, 0, 0.36),
+        inset 0 0 110px rgba(158, 91, 255, 0.05);
+    }
+
+    .grain {
+      z-index: 5;
+      opacity: 0.022;
+      background-image:
+        radial-gradient(circle at 20% 30%, #fff 0.7px, transparent 0.7px),
+        radial-gradient(circle at 70% 60%, #fff 0.7px, transparent 0.7px),
+        radial-gradient(circle at 45% 82%, #fff 0.7px, transparent 0.7px);
+      background-size: 140px 140px, 180px 180px, 220px 220px;
+    }
+
+    .title {
+      position: fixed;
+      left: 50%;
+      bottom: clamp(18px, 4.5vh, 48px);
+      transform: translateX(-50%);
+      z-index: 8;
+      width: min(88vw, 760px);
+      text-align: center;
+      text-transform: uppercase;
+      color: var(--neon);
+      pointer-events: none;
+      text-shadow: 0 0 18px rgba(216, 107, 255, 0.26), 0 0 40px rgba(216, 107, 255, 0.12);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+
+    .title.hide {
+      opacity: 0;
+      transform: translateX(-50%) translateY(16px);
+    }
+
+    .title .big {
+      font-size: clamp(24px, 6vw, 78px);
+      line-height: 0.98;
+      letter-spacing: 0.22em;
+      font-weight: 700;
+      margin-left: 0.22em;
+    }
+
+    .title .line {
+      width: min(180px, 30vw);
+      height: 1px;
+      margin: 12px auto 14px;
+      background: rgba(216, 107, 255, 0.92);
+      box-shadow: 0 0 14px rgba(216, 107, 255, 0.36);
+    }
+
+    .title .small {
+      font-size: clamp(13px, 1.8vw, 24px);
+      letter-spacing: 0.10em;
+      color: #efcaff;
+      line-height: 1.15;
+    }
+
+    .title .coords {
+      margin-top: 8px;
+      font-size: clamp(10px, 1.2vw, 15px);
+      letter-spacing: 0.11em;
+      color: rgba(246, 220, 255, 0.78);
+      line-height: 1.25;
+      max-width: 100%;
+      word-break: break-word;
+    }
+
+    .space-scene {
+      position: fixed;
+      inset: 0;
+      z-index: 7;
+      overflow: hidden;
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity 1.2s ease, transform 1.2s ease;
+      background:
+        radial-gradient(circle at 50% 55%, rgba(120, 56, 190, 0.10), transparent 30%),
+        radial-gradient(circle at 20% 20%, rgba(255, 170, 244, 0.05), transparent 18%),
+        radial-gradient(circle at 78% 18%, rgba(216, 107, 255, 0.05), transparent 18%);
+    }
+
+    .space-scene.hide {
+      opacity: 0;
+      transform: scale(1.03);
+    }
+
+    .stars,
+    .stars::before,
+    .stars::after {
+      position: absolute;
+      inset: 0;
+      content: "";
+    }
+
+    .stars {
+      background-image:
+        radial-gradient(circle, rgba(255, 255, 255, 0.9) 0.8px, transparent 1px),
+        radial-gradient(circle, rgba(255, 210, 255, 0.55) 0.8px, transparent 1px);
+      background-size: 180px 180px, 260px 260px;
+      background-position: 0 0, 60px 40px;
+      animation: driftStars 24s linear infinite;
+    }
+
+    .stars::before {
+      background-image:
+        radial-gradient(circle, rgba(216, 107, 255, 0.65) 0.9px, transparent 1px),
+        radial-gradient(circle, rgba(255, 255, 255, 0.5) 0.7px, transparent 1px);
+      background-size: 220px 220px, 140px 140px;
+      background-position: 40px 10px, 0 0;
+      animation: driftStars 34s linear infinite reverse;
+    }
+
+    .stars::after {
+      background-image:
+        radial-gradient(circle, rgba(255, 156, 244, 0.45) 1px, transparent 1px);
+      background-size: 300px 300px;
+      background-position: 80px 80px;
+      animation: twinkle 4s ease-in-out infinite;
+    }
+
+    .space-copy {
+      position: absolute;
+      left: 50%;
+      top: 13%;
+      transform: translateX(-50%);
+      width: min(84vw, 860px);
+      text-align: center;
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.22em;
+      text-shadow: 0 0 16px rgba(216, 107, 255, 0.20);
+    }
+
+    .space-copy .s1 {
+      font-size: clamp(12px, 1.8vw, 18px);
+      color: var(--text-soft);
+    }
+
+    .space-copy .s2 {
+      margin-top: 14px;
+      font-size: clamp(30px, 6vw, 70px);
+      font-weight: 700;
+      color: var(--neon);
+      letter-spacing: 0.28em;
+      margin-left: 0.28em;
+    }
+
+    .space-copy .s3 {
+      margin-top: 12px;
+      font-size: clamp(11px, 1.4vw, 16px);
+      color: rgba(247, 230, 255, 0.72);
+      letter-spacing: 0.18em;
+    }
+
+    .moon-wrap {
+      position: absolute;
+      left: clamp(18px, 6vw, 84px);
+      top: 50%;
+      transform: translateY(-50%);
+      width: clamp(140px, 22vw, 300px);
+      aspect-ratio: 1;
+    }
+
+    .moon-aura {
+      position: absolute;
+      inset: -18%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(216, 107, 255, 0.18), rgba(216, 107, 255, 0.06) 44%, transparent 72%);
+      filter: blur(18px);
+      animation: pulseAura 3.6s ease-in-out infinite;
+    }
+
+    .moon {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 30% 30%, #fff8ff 0%, #f7e1ff 12%, #e6c1ff 24%, #c68cff 45%, #8a4dcb 72%, #4a1d77 100%);
+      box-shadow:
+        0 0 26px rgba(216, 107, 255, 0.26),
+        0 0 90px rgba(216, 107, 255, 0.14),
+        inset -24px -22px 40px rgba(58, 18, 96, 0.52),
+        inset 10px 10px 20px rgba(255, 255, 255, 0.12);
+      overflow: hidden;
+      animation: floatMoon 5s ease-in-out infinite;
+    }
+
+    .moon::before,
+    .moon::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(111, 50, 168, 0.22);
+    }
+
+    .moon::before {
+      width: 22%;
+      height: 22%;
+      top: 22%;
+      left: 20%;
+    }
+
+    .moon::after {
+      width: 15%;
+      height: 15%;
+      top: 56%;
+      left: 50%;
+    }
+
+    .moon-ring {
+      position: absolute;
+      inset: -10%;
+      border-radius: 50%;
+      border: 1px solid rgba(216, 107, 255, 0.16);
+      box-shadow: 0 0 24px rgba(216, 107, 255, 0.10);
+    }
+
+    .earth-wrap {
+      position: absolute;
+      right: -12vw;
+      bottom: -24vh;
+      width: min(74vw, 780px);
+      height: min(74vw, 780px);
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 42% 35%, rgba(255, 196, 250, 0.24), rgba(178, 104, 255, 0.22) 20%, rgba(59, 18, 100, 0.36) 44%, rgba(8, 2, 16, 1) 64%);
+      box-shadow:
+        0 0 80px rgba(216, 107, 255, 0.12),
+        inset 0 0 80px rgba(255, 255, 255, 0.03);
+      filter: blur(1px);
+      transform: rotate(-10deg);
+    }
+
+    .earth-rim {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      box-shadow:
+        inset -10px -18px 60px rgba(0, 0, 0, 0.44),
+        inset 18px 12px 50px rgba(255, 255, 255, 0.04);
+    }
+
+    .earth-edge {
+      position: absolute;
+      right: 7%;
+      bottom: 8%;
+      width: min(44vw, 450px);
+      height: min(44vw, 450px);
+      border-radius: 50%;
+      border-top: 2px solid rgba(255, 198, 249, 0.58);
+      border-left: 2px solid rgba(216, 107, 255, 0.16);
+      border-right: 0;
+      border-bottom: 0;
+      filter: blur(2px);
+      transform: rotate(26deg);
+    }
+
+    .space-path {
+      position: absolute;
+      left: 20%;
+      top: 50%;
+      width: 48%;
+      height: 2px;
+      transform: translateY(-50%) rotate(8deg);
+      transform-origin: left center;
+      background: linear-gradient(90deg, rgba(216, 107, 255, 0.0), rgba(216, 107, 255, 0.65), rgba(255, 156, 244, 0.0));
+      filter: blur(0.2px);
+      opacity: 0.95;
+    }
+
+    .space-traveler {
+      position: absolute;
+      left: 20%;
+      top: 50%;
+      width: 18px;
+      height: 18px;
+      margin-left: -9px;
+      margin-top: -9px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #fff, #ffcfff 25%, #e588ff 55%, #8e45cd 100%);
+      box-shadow:
+        0 0 16px rgba(216, 107, 255, 0.65),
+        0 0 34px rgba(216, 107, 255, 0.32);
+      animation: travelerToEarth 3.8s ease-in-out infinite;
+    }
+
+    .space-traveler::after {
+      content: "";
+      position: absolute;
+      right: 100%;
+      top: 50%;
+      width: 54px;
+      height: 2px;
+      transform: translateY(-50%);
+      background: linear-gradient(90deg, rgba(216, 107, 255, 0.0), rgba(216, 107, 255, 0.65));
+      filter: blur(1px);
+    }
+
+    .plane-scene {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.9s ease;
+    }
+
+    .plane-scene.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .plane-launcher {
+      position: relative;
+      border: 0;
+      background: transparent;
+      padding: 0;
+      cursor: pointer;
+      transform: translateY(24px) scale(0.94);
+      transition: transform 0.9s ease;
+    }
+
+    .plane-scene.show .plane-launcher {
+      transform: translateY(0) scale(1);
+    }
+
+    .plane-launcher:focus-visible {
+      outline: 2px solid rgba(255, 255, 255, 0.7);
+      outline-offset: 12px;
+      border-radius: 18px;
+    }
+
+    .plane-glow {
+      position: absolute;
+      inset: -50px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle, rgba(216, 107, 255, 0.20), rgba(216, 107, 255, 0.06) 48%, transparent 74%);
+      filter: blur(28px);
+      pointer-events: none;
+    }
+
+    .plane-wrap {
+      position: relative;
+      width: min(70vw, 340px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .plane-svg {
+      width: min(70vw, 320px);
+      height: auto;
+      display: block;
+      filter:
+        drop-shadow(0 0 20px rgba(216, 107, 255, 0.16)) drop-shadow(0 16px 26px rgba(0, 0, 0, 0.30));
+      transform-origin: 46% 52%;
+      animation: planeFloat 3.8s ease-in-out infinite;
+      transition: transform 0.35s ease, filter 0.35s ease, opacity 0.35s ease;
+    }
+
+    .plane-launcher:hover .plane-svg {
+      transform: translateY(-4px) rotate(-3deg) scale(1.02);
+      filter:
+        drop-shadow(0 0 26px rgba(216, 107, 255, 0.22)) drop-shadow(0 18px 30px rgba(0, 0, 0, 0.32));
+    }
+
+    .plane-note {
+      text-align: center;
+      text-transform: uppercase;
+      color: var(--text);
+      letter-spacing: 0.15em;
+      pointer-events: none;
+    }
+
+    .plane-note .top {
+      font-size: 11px;
+      color: rgba(247, 230, 255, 0.72);
+      margin-bottom: 8px;
+    }
+
+    .plane-note .bottom {
+      font-size: 13px;
+      color: var(--neon);
+      text-shadow: 0 0 12px rgba(216, 107, 255, 0.22);
+    }
+
+    .plane-trail {
+      position: absolute;
+      left: -72px;
+      top: 48%;
+      width: 94px;
+      height: 2px;
+      background: linear-gradient(90deg, rgba(216, 107, 255, 0), rgba(216, 107, 255, 0.58), rgba(255, 156, 244, 0));
+      filter: blur(1px);
+      opacity: 0.85;
+      pointer-events: none;
+    }
+
+    .plane-launcher.flying {
+      pointer-events: none;
+    }
+
+    .plane-launcher.flying .plane-note,
+    .plane-launcher.flying .plane-trail,
+    .plane-launcher.flying .plane-glow {
+      animation: fadeOutFast 0.45s ease forwards;
+    }
+
+    @keyframes pulseAura {
+      0%,
+      100% {
+        transform: scale(0.98);
+        opacity: 0.92;
+      }
+
+      50% {
+        transform: scale(1.05);
+        opacity: 1;
+      }
+    }
+
+    @keyframes floatMoon {
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-10px);
+      }
+    }
+
+    @keyframes driftStars {
+      from {
+        transform: translate3d(0, 0, 0);
+      }
+
+      to {
+        transform: translate3d(-40px, 20px, 0);
+      }
+    }
+
+    @keyframes twinkle {
+      0%,
+      100% {
+        opacity: 0.55;
+      }
+
+      50% {
+        opacity: 1;
+      }
+    }
+
+    @keyframes travelerToEarth {
+      0% {
+        transform: translate(0, 0) scale(0.95);
+        opacity: 0.86;
+      }
+
+      70% {
+        transform: translate(calc(48vw - 120px), 52px) scale(1.05);
+        opacity: 1;
+      }
+
+      100% {
+        transform: translate(calc(48vw - 72px), 60px) scale(1);
+        opacity: 0.96;
+      }
+    }
+
+    @keyframes planeFloat {
+      0%,
+      100% {
+        transform: translateY(0) rotate(-8deg);
+      }
+
+      50% {
+        transform: translateY(-10px) rotate(-4deg);
+      }
+    }
+
+    @keyframes fadeOutFast {
+      to {
+        opacity: 0;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .title {
+        width: min(92vw, 430px);
+        bottom: 14px;
+      }
+
+      .title .big,
+      .space-copy .s2 {
+        letter-spacing: 0.16em;
+        margin-left: 0.16em;
+      }
+
+      .title .small {
+        font-size: 12px;
+        letter-spacing: 0.08em;
+      }
+
+      .title .coords {
+        font-size: 9px;
+        letter-spacing: 0.07em;
+      }
+
+      .space-path {
+        left: 24%;
+        width: 42%;
+      }
+
+      .plane-wrap {
+        width: min(82vw, 290px);
+        gap: 14px;
+      }
+
+      .plane-svg {
+        width: min(82vw, 270px);
+      }
+
+      .plane-note .top {
+        font-size: 10px;
+      }
+
+      .plane-note .bottom {
+        font-size: 11px;
+      }
+
+      .plane-trail {
+        left: -54px;
+        width: 72px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <div id="map"></div>
+
+    <div class="ambient"></div>
+    <div class="overlay"></div>
+    <div class="vignette"></div>
+    <div class="grain"></div>
+
+    <div class="space-scene" id="spaceScene">
+      <div class="stars"></div>
+
+      <div class="space-copy">
+        <div class="s1">A celestial beginning</div>
+        <div class="s2">Moon to Earth</div>
+        <div class="s3"></div>
+      </div>
+
+      <div class="moon-wrap">
+        <div class="moon-aura"></div>
+        <div class="moon-ring"></div>
+        <div class="moon"></div>
+      </div>
+
+      <div class="space-path"></div>
+      <div class="space-traveler"></div>
+
+      <div class="earth-wrap">
+        <div class="earth-rim"></div>
+      </div>
+      <div class="earth-edge"></div>
+    </div>
+
+    <div class="title" id="titleBox">
+      <div class="big" id="titleMain"></div>
+      <!-- <div class="line"></div> -->
+      <div class="small" id="titleSub">Out of Earth</div>
+      <div class="coords" id="titleCoords">Sending love to Khulna</div>
+    </div>
+
+    <div class="plane-scene" id="planeScene" aria-label="Open birthday page">
+      <button class="plane-launcher" id="planeLauncher" type="button" aria-label="Launch the paper plane">
+        <div class="plane-glow"></div>
+
+        <div class="plane-wrap">
+          <div class="plane-trail"></div>
+
+          <svg class="plane-svg" viewBox="0 0 420 260" aria-hidden="true">
+            <defs>
+              <linearGradient id="planeMain" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#fff8ff" />
+                <stop offset="45%" stop-color="#f1dbff" />
+                <stop offset="100%" stop-color="#d8b2ff" />
+              </linearGradient>
+
+              <linearGradient id="planeWingTop" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ffffff" />
+                <stop offset="100%" stop-color="#e8c8ff" />
+              </linearGradient>
+
+              <linearGradient id="planeWingBottom" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#edd4ff" />
+                <stop offset="100%" stop-color="#ca94ff" />
+              </linearGradient>
+
+              <linearGradient id="planeEdge" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="rgba(90,40,120,0.15)" />
+                <stop offset="50%" stop-color="rgba(90,40,120,0.6)" />
+                <stop offset="100%" stop-color="rgba(90,40,120,0)" />
+              </linearGradient>
+            </defs>
+
+            <path d="M26 130 L387 28 L250 129 L387 230 Z" fill="url(#planeMain)" stroke="rgba(216,107,255,0.18)"
+              stroke-width="2" />
+
+            <path d="M250 129 L387 28 L216 105 Z" fill="url(#planeWingTop)" opacity="0.98" />
+
+            <path d="M250 129 L387 230 L216 155 Z" fill="url(#planeWingBottom)" opacity="0.98" />
+
+            <path d="M26 130 L216 105 L250 129 L216 155 Z" fill="#f7e7ff" opacity="0.94" />
+
+            <path d="M26 130 L250 129" stroke="rgba(115,58,158,0.55)" stroke-width="2" stroke-linecap="round" />
+
+            <path d="M216 105 L250 129 L216 155" stroke="rgba(115,58,158,0.34)" stroke-width="2" fill="none"
+              stroke-linecap="round" stroke-linejoin="round" />
+
+            <text x="150" y="138" text-anchor="middle" font-size="28" fill="#d86bff"
+              style="filter: drop-shadow(0 0 8px rgba(216,107,255,0.35));">❤</text>
+          </svg>
+
+          <div class="plane-note">
+            <div class="top">A special delivery</div>
+            <div class="bottom">Tap the plane to fly</div>
+          </div>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.21.1/dist/maplibre-gl.js"></script>
+  <script>
+    const MAPTILER_KEY = 'SnjititZk9YVLZdCeQMT';
+
+    const SHONADANGA = [89.5382, 22.8252];
+    const ORBIT_ENTRY = [89.5382, 82.0];
+
+    const mapEl = document.getElementById('map');
+    const spaceScene = document.getElementById('spaceScene');
+    const planeScene = document.getElementById('planeScene');
+    const planeLauncher = document.getElementById('planeLauncher');
+    const titleBox = document.getElementById('titleBox');
+
+    const titleMain = document.getElementById('titleMain');
+    const titleSub = document.getElementById('titleSub');
+    const titleCoords = document.getElementById('titleCoords');
+
+    function setTitle(main, sub, coords) {
+      titleMain.textContent = main;
+      titleSub.textContent = sub;
+      titleCoords.textContent = coords;
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function easeInOutCubic(t) {
+      return t < 0.5
+        ? 4 * t * t * t
+        : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    function easeOutCubic(t) {
+      return 1 - Math.pow(1 - t, 3);
+    }
+
+    function quadraticBezier(p0, p1, p2, t) {
+      const x =
+        (1 - t) * (1 - t) * p0[0] +
+        2 * (1 - t) * t * p1[0] +
+        t * t * p2[0];
+
+      const y =
+        (1 - t) * (1 - t) * p0[1] +
+        2 * (1 - t) * t * p1[1] +
+        t * t * p2[1];
+
+      return [x, y];
+    }
+
+    function buildOrbitArc(start, end, samples = 900) {
+      const [lng1, lat1] = start;
+      const [lng2, lat2] = end;
+
+      const control = [
+        lng2 + 5.5,
+        (lat1 + lat2) / 2 + 10
+      ];
+
+      const coords = [];
+      for (let i = 0; i <= samples; i++) {
+        const t = i / samples;
+        coords.push(quadraticBezier(start, control, end, t));
+      }
+      return coords;
+    }
+
+    const arc = buildOrbitArc(ORBIT_ENTRY, SHONADANGA, 900);
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: `https://api.maptiler.com/maps/019d37e3-ba73-7daa-8ae5-0a1287acd526/style.json?key=${MAPTILER_KEY}`,
+      center: [89.5382, 35],
+      zoom: window.innerWidth < 700 ? 1.7 : 2.1,
+      pitch: 0,
+      bearing: 0,
+      interactive: false,
+      attributionControl: false,
+      antialias: true,
+      fadeDuration: 0,
+      maxPitch: 0,
+      refreshExpiredTiles: false,
+      canvasContextAttributes: { antialias: true }
+    });
+
+    map.on('style.load', () => {
+      const candidateLayers = [
+        'Place labels',
+        'Road labels',
+        'Water labels',
+        'Place labels, villages',
+        'Place labels, towns',
+        'Place labels, cities',
+        'Road labels major',
+        'Road labels minor'
+      ];
+
+      candidateLayers.forEach((id) => {
+        if (map.getLayer(id) && map.getLayer(id).type === 'symbol') {
+          map.setPaintProperty(id, 'text-opacity', 0.82);
+        }
+      });
+    });
+
+    map.on('load', async () => {
+      map.addSource('route', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: [ORBIT_ENTRY]
+          }
+        }
+      });
+
+      map.addLayer({
+        id: 'route-glow',
+        type: 'line',
+        source: 'route',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': '#d86bff',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 2, 2.6, 5, 3.8, 10, 6.2, 15, 10],
+          'line-opacity': 0.20,
+          'line-blur': 1.25
+        }
+      });
+
+      map.addLayer({
+        id: 'route-line',
+        type: 'line',
+        source: 'route',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': '#ff9cf4',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 2, 1.2, 5, 1.8, 10, 2.9, 15, 4.8],
+          'line-opacity': 0.98
+        }
+      });
+
+      map.addSource('destination', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: [{
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: SHONADANGA
+            }
+          }]
+        }
+      });
+
+      map.addLayer({
+        id: 'destination-glow',
+        type: 'circle',
+        source: 'destination',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 12, 8, 16, 13, 20, 16, 26],
+          'circle-color': '#d86bff',
+          'circle-opacity': 0.16,
+          'circle-blur': 1
+        }
+      });
+
+      map.addLayer({
+        id: 'destination-core',
+        type: 'circle',
+        source: 'destination',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 4, 8, 6, 13, 8, 16, 10],
+          'circle-color': '#fff0ff',
+          'circle-stroke-color': '#d86bff',
+          'circle-stroke-width': 2.2,
+          'circle-opacity': 0
+        }
+      });
+
+      map.addSource('traveler', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: [{
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: ORBIT_ENTRY
+            }
+          }]
+        }
+      });
+
+      map.addLayer({
+        id: 'traveler-outer',
+        type: 'circle',
+        source: 'traveler',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 24, 8, 30, 13, 36],
+          'circle-color': '#d86bff',
+          'circle-opacity': 0.12,
+          'circle-blur': 1.2
+        }
+      });
+
+      map.addLayer({
+        id: 'traveler-mid',
+        type: 'circle',
+        source: 'traveler',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 13, 8, 18, 13, 22],
+          'circle-color': '#ff9cf4',
+          'circle-opacity': 0.24,
+          'circle-blur': 0.9
+        }
+      });
+
+      map.addLayer({
+        id: 'traveler-core',
+        type: 'circle',
+        source: 'traveler',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 6, 8, 8, 13, 10],
+          'circle-color': '#fff6ff',
+          'circle-stroke-color': '#d86bff',
+          'circle-stroke-width': 2,
+          'circle-opacity': 0.98
+        }
+      });
+
+      await sleep(500);
+      await runSequence();
+    });
+
+    function setGeojson(sourceId, data) {
+      const source = map.getSource(sourceId);
+      if (source) source.setData(data);
+    }
+
+    function updateRoute(coords) {
+      setGeojson('route', {
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: coords
+        }
+      });
+    }
+
+    function updateTraveler(coord) {
+      setGeojson('traveler', {
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: coord
+          }
+        }]
+      });
+    }
+
+    function animateLineAndTraveler(points, duration) {
+      return new Promise(resolve => {
+        const start = performance.now();
+
+        function frame(now) {
+          const raw = Math.min((now - start) / duration, 1);
+          const t = easeInOutCubic(raw);
+          const exact = t * (points.length - 1);
+          const index = Math.floor(exact);
+          const frac = exact - index;
+
+          const a = points[index] || points[points.length - 1];
+          const b = points[Math.min(index + 1, points.length - 1)];
+
+          const current = [
+            a[0] + (b[0] - a[0]) * frac,
+            a[1] + (b[1] - a[1]) * frac
+          ];
+
+          const visible = points.slice(0, Math.max(2, index + 1));
+          visible.push(current);
+
+          updateRoute(visible);
+          updateTraveler(current);
+
+          if (raw < 1) {
+            requestAnimationFrame(frame);
+          } else {
+            updateRoute(points);
+            updateTraveler(points[points.length - 1]);
+            resolve();
+          }
+        }
+
+        requestAnimationFrame(frame);
+      });
+    }
+
+    function easeToPromise(options) {
+      return new Promise(resolve => {
+        const end = () => {
+          map.off('moveend', end);
+          resolve();
+        };
+        map.on('moveend', end);
+        map.easeTo({ ...options, essential: true });
+      });
+    }
+
+    function animatePlaneFly(planeSvg, isMobile) {
+      return new Promise((resolve) => {
+        const duration = 1750;
+        const start = performance.now();
+
+        const startX = 0;
+        const startY = 0;
+        const cp1X = isMobile ? -40 : -55;
+        const cp1Y = isMobile ? -8 : -10;
+        const cp2X = isMobile ? -170 : -240;
+        const cp2Y = isMobile ? -45 : -70;
+        const endX = isMobile ? -360 : -560;
+        const endY = isMobile ? -110 : -160;
+
+        const startRot = -8;
+        const endRot = -21;
+        const startScale = 1;
+        const endScale = isMobile ? 0.72 : 0.76;
+
+        function cubicBezierPoint(p0, p1, p2, p3, t) {
+          const mt = 1 - t;
+          const x =
+            mt * mt * mt * p0[0] +
+            3 * mt * mt * t * p1[0] +
+            3 * mt * t * t * p2[0] +
+            t * t * t * p3[0];
+
+          const y =
+            mt * mt * mt * p0[1] +
+            3 * mt * mt * t * p1[1] +
+            3 * mt * t * t * p2[1] +
+            t * t * t * p3[1];
+
+          return [x, y];
+        }
+
+        function frame(now) {
+          const raw = Math.min((now - start) / duration, 1);
+          const t = easeOutCubic(raw);
+
+          const [x, y] = cubicBezierPoint(
+            [startX, startY],
+            [cp1X, cp1Y],
+            [cp2X, cp2Y],
+            [endX, endY],
+            t
+          );
+
+          const rotate = startRot + (endRot - startRot) * t;
+          const scale = startScale + (endScale - startScale) * t;
+          const opacity = 1 - Math.pow(t, 1.65);
+
+          planeSvg.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${rotate}deg) scale(${scale})`;
+          planeSvg.style.opacity = opacity;
+
+          if (raw < 1) {
+            requestAnimationFrame(frame);
+          } else {
+            resolve();
+          }
+        }
+
+        requestAnimationFrame(frame);
+      });
+    }
+
+    async function runSequence() {
+      const small = window.innerWidth < 700;
+
+      const worldZoom = small ? 1.8 : 2.15;
+      const upperEarthZoom = small ? 2.7 : 3.1;
+      const khulnaZoom1 = small ? 11.8 : 12.8;
+      const khulnaZoom2 = small ? 14.9 : 15.8;
+
+      setTitle('', 'Out of Earth', 'Sending love to Khulna');
+      await sleep(2900);
+
+      spaceScene.classList.add('hide');
+      mapEl.classList.add('show');
+
+      map.jumpTo({
+        center: [89.5382, 35],
+        zoom: worldZoom
+      });
+
+      await sleep(260);
+
+      setTitle('Moon to Earth', 'A celestial journey', '');
+      await easeToPromise({
+        center: [89.5382, 42],
+        zoom: upperEarthZoom,
+        duration: 3200,
+        easing: easeInOutCubic
+      });
+
+      await sleep(250);
+
+      map.setPaintProperty('destination-core', 'circle-opacity', 1);
+      setTitle('From Orbit To', '', 'Moon → Earth → Khulna');
+
+      await animateLineAndTraveler(arc, 6000);
+      await sleep(420);
+
+      setTitle('Khulna', 'Bangladesh', '22.8252° N / 89.5382° E');
+
+      await easeToPromise({
+        center: SHONADANGA,
+        zoom: khulnaZoom1,
+        duration: 4400,
+        easing: easeInOutCubic
+      });
+
+      await sleep(420);
+
+      await easeToPromise({
+        center: SHONADANGA,
+        zoom: khulnaZoom2,
+        duration: 3600,
+        easing: easeInOutCubic
+      });
+
+      await sleep(650);
+      titleBox.classList.add('hide');
+      await sleep(350);
+      planeScene.classList.add('show');
+    }
+
+    planeLauncher.addEventListener('click', async () => {
+      if (planeLauncher.classList.contains('flying')) return;
+
+      planeLauncher.classList.add('flying');
+
+      const planeSvg = planeLauncher.querySelector('.plane-svg');
+      const isMobile = window.innerWidth < 700;
+
+      planeSvg.style.animation = 'none';
+      planeSvg.style.willChange = 'transform, opacity';
+      planeSvg.style.pointerEvents = 'none';
+
+      await animatePlaneFly(planeSvg, isMobile);
+      window.location.href = 'birthday-card.html';
+    });
+  </script>
+</body>
+
+</html>
