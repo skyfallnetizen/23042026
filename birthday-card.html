@@ -520,6 +520,86 @@
       text-shadow: 0 0 12px rgba(216, 107, 255, 0.18);
     }
 
+    .love-hand-buttons {
+      position: absolute;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%) translateY(18px);
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      z-index: 3;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.55s ease, transform 0.55s ease;
+    }
+
+    .love-hand-buttons.show {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .love-hand-btn {
+      border: none;
+      width: 25px;
+      height: 25px;
+      border-radius: 999px;
+      font-size: 14px;
+      cursor: pointer;
+      color: #2a0839;
+      background: transparent;
+      box-shadow: 0 8px 18px rgba(216, 107, 255, 0.22);
+      animation: handFloat 2.8s ease-in-out infinite;
+      transition: transform 0.22s ease, box-shadow 0.22s ease, opacity 0.22s ease;
+      display: grid;
+      place-items: center;
+      padding: 0;
+    }
+
+    .love-hand-btn:nth-child(2) {
+      animation-delay: 0.35s;
+    }
+
+    .love-hand-btn:nth-child(3) {
+      animation-delay: 0.7s;
+    }
+
+    .love-hand-btn:hover {
+      transform: translateY(-3px) scale(1.06);
+      box-shadow: 0 10px 22px rgba(216, 107, 255, 0.3);
+    }
+
+    .wish-image-overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: rgba(11, 3, 20, 0.18);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease;
+      z-index: 5;
+      border-radius: 28px;
+    }
+
+    .wish-image-overlay.show {
+      opacity: 1;
+    }
+
+    .wish-image-overlay img {
+      width: min(78%, 280px);
+      max-height: 68%;
+      object-fit: cover;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow:
+        0 16px 32px rgba(0, 0, 0, 0.35),
+        0 0 26px rgba(216, 107, 255, 0.22);
+    }
+
     @keyframes envelopeEnter {
       from {
         opacity: 0;
@@ -533,7 +613,9 @@
     }
 
     @keyframes glowPulse {
-      0%, 100% {
+
+      0%,
+      100% {
         opacity: 0.75;
       }
 
@@ -571,7 +653,9 @@
     }
 
     @keyframes yesLovePulse {
-      0%, 100% {
+
+      0%,
+      100% {
         box-shadow: 0 0 0 0 rgba(255, 154, 240, 0.28), 0 0 24px rgba(216, 107, 255, 0.36);
       }
 
@@ -610,6 +694,18 @@
       100% {
         transform: translateY(-520px) translateX(-18px) scale(1.08) rotate(-4deg);
         opacity: 0;
+      }
+    }
+
+    @keyframes handFloat {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-10px);
       }
     }
 
@@ -698,7 +794,19 @@
         <h2>Happy Birthday! 💜</h2>
         <p>I hope this year brings you new happiness, kind people, warm memories,
           and all the little things that make life feel magical.</p>
-        <div class="status" id="savedText"></div>
+        <div><br></div>
+
+        <div class="love-hand-buttons" id="loveHandButtons" aria-label="Love hand actions">
+          <button class="love-hand-btn" type="button" data-image="1">🫶</button>
+          <button class="love-hand-btn" type="button" data-image="2">🫶</button>
+          <button class="love-hand-btn" type="button" data-image="3">🫶</button>
+        </div>
+
+        <div class="wish-image-overlay" id="wishImageOverlay" aria-hidden="true">
+          <img id="wishOverlayImage"
+            src="./Affii.jpeg"
+            alt="Special birthday image" />
+        </div>
       </div>
     </section>
   </main>
@@ -716,12 +824,17 @@
     const savedText = document.getElementById('savedText');
     const sigmaGifWrap = document.getElementById('sigmaGifWrap');
     const yesBalloons = document.getElementById('yesBalloons');
+    const loveHandButtons = document.getElementById('loveHandButtons');
+    const wishImageOverlay = document.getElementById('wishImageOverlay');
+    const wishOverlayImage = document.getElementById('wishOverlayImage');
 
     let noMoveCount = 0;
     let noInterval = null;
     let noVanished = false;
     let sigmaGifTimer = null;
     let isEnvelopeOpened = false;
+    let overlayTimer = null;
+    let loveButtonsShown = false;
 
     function openEnvelope() {
       if (isEnvelopeOpened) return;
@@ -909,6 +1022,37 @@
       await recordYesChoice();
     });
 
+    function showLoveButtons() {
+      if (loveButtonsShown) return;
+      loveButtonsShown = true;
+      requestAnimationFrame(() => {
+        loveHandButtons.classList.add('show');
+      });
+    }
+    function showWishImage(imageId) {
+      const images = {
+        1: './Affii.jpeg',
+        2: './Affii.jpeg',
+        3: './Affii.jpeg'
+      };
+
+      wishOverlayImage.src = images[imageId] || images[1];
+      wishImageOverlay.classList.add('show');
+      wishImageOverlay.setAttribute('aria-hidden', 'false');
+
+      if (overlayTimer) clearTimeout(overlayTimer);
+      overlayTimer = setTimeout(() => {
+        wishImageOverlay.classList.remove('show');
+        wishImageOverlay.setAttribute('aria-hidden', 'true');
+      }, 3000);
+    }
+
+    loveHandButtons.addEventListener('click', (e) => {
+      const btn = e.target.closest('.love-hand-btn');
+      if (!btn) return;
+      showWishImage(btn.dataset.image);
+    });
+
     function launchHearts() {
       hearts.innerHTML = '';
       for (let i = 0; i < 22; i++) {
@@ -937,6 +1081,10 @@
         balloon.style.height = `${56 + Math.random() * 22}px`;
         yesBalloons.appendChild(balloon);
       }
+
+      setTimeout(() => {
+        showLoveButtons();
+      }, 3200);
     }
   </script>
 </body>
